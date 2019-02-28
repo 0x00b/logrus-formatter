@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	logf "github.com/0x00b/logrus_formatter"
+	logf "github.com/0x00b/logrus-formatter"
 	"github.com/sirupsen/logrus"
 	"strings"
 )
