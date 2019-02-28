@@ -1,4 +1,4 @@
-module github.com/0x00b/logrus_formatter
+module github.com/0x00b/logrus-formatter
 
 require (
 	github.com/onsi/ginkgo v1.7.0
