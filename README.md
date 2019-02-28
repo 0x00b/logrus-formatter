@@ -1,8 +1,7 @@
 # logrus-formatter 
  text formatter for logrus
 
-[Logrus](https://github.com/sirupsen/logrus) formatter mainly based on original `logrus.TextFormatter` but with 
-modified text formatter.
+[Logrus](https://github.com/sirupsen/logrus) formatter with modified text formatter.
 
 ## Installation
 To install formatter, use `go get`:
