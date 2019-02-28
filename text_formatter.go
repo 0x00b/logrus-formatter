@@ -166,7 +166,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		timestampFormat = defaultTimestampFormat
 	}
 	if f.hasTime {
-		output = strings.Replace(output, "%"+FieldKeyTime+"%", f.quoteValue(entry.Time.Format(timestampFormat)), 1)
+		output = strings.Replace(output, "%"+FieldKeyTime+"%", (entry.Time.Format(timestampFormat)), 1)
 	}
 	if f.hasMsg {
 		output = strings.Replace(output, "%"+FieldKeyMsg+"%", f.quoteValue(entry.Message), 1)
