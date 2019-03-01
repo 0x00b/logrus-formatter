@@ -42,7 +42,7 @@ var _ = Describe("Formatter", func() {
 
 	Describe("logfmt output", func() {
 		It("should output simple message", func() {
-			formatter.SetFormat(TagBR, FieldKeyLevel, TagBL, FieldKeyMsg)
+			formatter.SetFormat(TagBL, FieldKeyLevel, TagBR, FieldKeyMsg)
 			log.Debug("test")
 			Ω(output.GetValue()).Should(Equal("[DEBG] test\n"))
 		})
@@ -50,13 +50,13 @@ var _ = Describe("Formatter", func() {
 		It("should output message with additional field", func() {
 			formatter.SetFormat(FieldKeyLevel, FieldKeyMsg)
 			log.WithFields(logrus.Fields{"animal": "walrus"}).Debug("test")
-			Ω(output.GetValue()).Should(Equal("DEBG test animal:\"walrus\"\n"))
+			Ω(output.GetValue()).Should(Equal("DEBG test (animal:\"walrus\")\n"))
 		})
 	})
 
 	Describe("Formatted output", func() {
 		It("should output formatted message", func() {
-			formatter.SetFormat(TagBR, FieldKeyTime, TagBL, FieldKeyLevel, FieldKeyFile, TaGColon, FieldKeyFunc, TaGColon, FieldKeyLine, FieldKeyMsg)
+			formatter.SetFormat(TagBL, FieldKeyTime, TagBR, FieldKeyLevel, FieldKeyFile, TaGColon, FieldKeyFunc, TaGColon, FieldKeyLine, FieldKeyMsg)
 			log.Warnln("warnning test ")
 			fmt.Println(output.GetValue())
 		})

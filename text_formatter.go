@@ -1,6 +1,7 @@
 package logrus_formatter
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"strconv"
@@ -16,14 +17,18 @@ const (
 	FieldKeyFunc           = logrus.FieldKeyFunc
 	FieldKeyFile           = logrus.FieldKeyFile
 	FieldKeyLine           = "line"
-	TagBR                  = "["
-	TagBL                  = "]"
+	TagBL                  = "["
+	TagBR                  = "]"
 	TaGColon               = ":"
 	defaultTimestampFormat = time.RFC3339
 )
 
 var (
-	defaultFormat = fmt.Sprintf("[%%%v%%] %%%v%% %%%v%%:%%line%% - %%%v%%", FieldKeyTime, FieldKeyLevel, FieldKeyFunc, FieldKeyMsg)
+	defaultFormat      = fmt.Sprintf("[%%%v%%] %%%v%% %%%v%%:%%line%% - %%%v%%", FieldKeyTime, FieldKeyLevel, FieldKeyFunc, FieldKeyMsg)
+	defaultFormatArray = []string{TagBL, FieldKeyTime, TagBR, FieldKeyLevel, FieldKeyMsg}
+
+	FunctionNameLength = 25
+	FileNameLength     = 20
 )
 
 // TextFormatter formats logs into text
@@ -35,7 +40,7 @@ type TextFormatter struct {
 	QuoteEmptyFields bool
 
 	//LogFormat
-	LogFormat string
+	//LogFormat string
 
 	FormatFuncName HandlerFormatFile
 	FormatFileName HandlerFormatFunc
@@ -46,6 +51,8 @@ type TextFormatter struct {
 	hasFunc  bool
 	hasFile  bool
 	hasLine  bool
+
+	keyArray []string
 }
 
 //HandlerFormatFunc format function name
@@ -55,21 +62,19 @@ type HandlerFormatFunc func(funcName string) string
 type HandlerFormatFile func(fileName string) string
 
 func defaultFormatFunc(funcName string) string {
-	funcLen := 15
-	l := len(funcName)
-	if l > funcLen {
-		return "." + funcName[l-funcLen+1:l]
+	length := len(funcName)
+	if length > FunctionNameLength {
+		return "." + funcName[length-FunctionNameLength+1:length]
 	}
-	return strings.Repeat(" ", funcLen-l) + funcName
+	return strings.Repeat(" ", FunctionNameLength-length) + funcName
 }
 func defaultFormatFile(fileName string) string {
-	fileLen := 20
 	r := []rune(fileName)
-	l := len(r)
-	if l > fileLen {
-		return "." + fileName[l-fileLen+1:l]
+	length := len(r)
+	if length > FileNameLength {
+		return "." + fileName[length-FileNameLength+1:length]
 	}
-	return strings.Repeat(" ", fileLen-l) + fileName
+	return strings.Repeat(" ", FileNameLength-length) + fileName
 }
 
 func isTag(s string) bool {
@@ -79,8 +84,8 @@ func isTag(s string) bool {
 	return false
 }
 
-func isBL(s string) bool {
-	if s == TagBL {
+func isBR(s string) bool {
+	if s == TagBR {
 		return true
 	}
 	return false
@@ -103,24 +108,82 @@ func (f *TextFormatter) setHasKey(k string) {
 	}
 }
 
-func (f *TextFormatter) SetFormat(args ...string) (format string) {
-	f.LogFormat = ""
-	for idx, k := range args {
+func (f *TextFormatter) SetFormat(args ...string) {
+	f.keyArray = args
+}
+
+func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+	var buf bytes.Buffer
+
+	if len(f.keyArray) == 0 {
+		f.keyArray = defaultFormatArray
+	}
+
+	for idx, k := range f.keyArray {
 		if isTag(k) {
-			f.LogFormat += k
-			if isBL(k) {
-				f.LogFormat += " "
+			buf.WriteString(k)
+			if isBR(k) {
+				buf.WriteByte(' ')
 			}
 		} else {
-			key := "%" + k + "%"
-			f.LogFormat += key
-			if idx < len(args)-1 && args[idx+1] != TagBL && args[idx+1] != TaGColon {
-				f.LogFormat += " "
+			switch k {
+			case FieldKeyMsg:
+				buf.WriteString(f.quoteValue(entry.Message))
+			case FieldKeyLevel:
+				level := Level(entry.Level).String()
+				buf.WriteString(level)
+			case FieldKeyTime:
+				timestampFormat := f.TimestampFormat
+				if timestampFormat == "" {
+					timestampFormat = defaultTimestampFormat
+				}
+				buf.WriteString(entry.Time.Format(timestampFormat))
+			case FieldKeyFunc:
+				if entry.Caller != nil {
+					if f.FormatFuncName == nil {
+						f.FormatFuncName = defaultFormatFunc
+					}
+					buf.WriteString(f.FormatFuncName(entry.Caller.Function))
+				}
+			case FieldKeyFile:
+				if entry.Caller != nil {
+					if f.FormatFileName == nil {
+						f.FormatFileName = defaultFormatFile
+					}
+					buf.WriteString(f.FormatFileName(entry.Caller.File))
+				}
+			case FieldKeyLine:
+				if entry.Caller != nil {
+					line := fmt.Sprintf("%-4v", strconv.FormatInt(int64(entry.Caller.Line), 10))
+					buf.WriteString(line)
+				}
 			}
-			f.setHasKey(k)
+			if idx < len(f.keyArray)-1 && f.keyArray[idx+1] != TagBR && f.keyArray[idx+1] != TaGColon {
+				buf.WriteByte(' ')
+			}
 		}
 	}
-	return f.LogFormat
+	length := len(entry.Data)
+	if length > 0 {
+		var idx int
+		buf.WriteString(" (")
+		for k, v := range entry.Data {
+			if s, ok := v.(string); ok {
+				buf.WriteString(fmt.Sprintf("%v:%q", k, s))
+			} else {
+				buf.WriteString(fmt.Sprintf("%v:%v", k, v))
+			}
+			if idx < length-1 {
+				buf.WriteByte(' ')
+			}
+			idx++
+		}
+		buf.WriteByte(')')
+	}
+
+	buf.WriteByte('\n')
+
+	return buf.Bytes(), nil
 }
 
 type Level logrus.Level
@@ -155,53 +218,73 @@ func (level Level) MarshalText() ([]byte, error) {
 	return nil, fmt.Errorf("not a valid lorus level %q", level)
 }
 
-func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
-	output := f.LogFormat
-	if output == "" {
-		output = defaultFormat
-	}
+// func (f *TextFormatter) SetFormat(args ...string) (format string) {
+// 	f.LogFormat = ""
+// 	for idx, k := range args {
+// 		if isTag(k) {
+// 			f.LogFormat += k
+// 			if isBR(k) {
+// 				f.LogFormat += " "
+// 			}
+// 		} else {
+// 			key := "%" + k + "%"
+// 			f.LogFormat += key
+// 			if idx < len(args)-1 && args[idx+1] != TagBR && args[idx+1] != TaGColon {
+// 				f.LogFormat += " "
+// 			}
+// 			f.setHasKey(k)
+// 		}
+// 	}
+// 	return f.LogFormat
+// }
 
-	timestampFormat := f.TimestampFormat
-	if timestampFormat == "" {
-		timestampFormat = defaultTimestampFormat
-	}
-	if f.hasTime {
-		output = strings.Replace(output, "%"+FieldKeyTime+"%", (entry.Time.Format(timestampFormat)), 1)
-	}
-	if f.hasMsg {
-		output = strings.Replace(output, "%"+FieldKeyMsg+"%", f.quoteValue(entry.Message), 1)
-	}
-	if f.hasLevel {
-		level := Level(entry.Level).String()
-		output = strings.Replace(output, "%"+FieldKeyLevel+"%", (level), 1)
-	}
-	if entry.Caller != nil {
-		if f.hasFunc {
-			if f.FormatFuncName == nil {
-				f.FormatFuncName = defaultFormatFunc
-			}
-			output = strings.Replace(output, "%"+FieldKeyFunc+"%", (f.FormatFuncName(entry.Caller.Function)), 1)
+// func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
+// 	output := f.LogFormat
+// 	if output == "" {
+// 		output = defaultFormat
+// 	}
 
-		}
-		if f.hasFile {
-			if f.FormatFileName == nil {
-				f.FormatFileName = defaultFormatFile
-			}
-			output = strings.Replace(output, "%"+FieldKeyFile+"%", (f.FormatFileName(entry.Caller.File)), 1)
-		}
-		if f.hasLine {
-			line := fmt.Sprintf("%-4v", strconv.FormatInt(int64(entry.Caller.Line), 10))
-			output = strings.Replace(output, "%"+FieldKeyLine+"%", (line), 1)
-		}
-	}
-	for k, v := range entry.Data {
-		if s, ok := v.(string); ok {
-			output += fmt.Sprintf(" %v:%q", k, s)
-		}
-	}
-	output += "\n"
-	return []byte(output), nil
-}
+// 	timestampFormat := f.TimestampFormat
+// 	if timestampFormat == "" {
+// 		timestampFormat = defaultTimestampFormat
+// 	}
+// 	if f.hasTime {
+// 		output = strings.Replace(output, "%"+FieldKeyTime+"%", (entry.Time.Format(timestampFormat)), 1)
+// 	}
+// 	if f.hasMsg {
+// 		output = strings.Replace(output, "%"+FieldKeyMsg+"%", f.quoteValue(entry.Message), 1)
+// 	}
+// 	if f.hasLevel {
+// 		level := Level(entry.Level).String()
+// 		output = strings.Replace(output, "%"+FieldKeyLevel+"%", (level), 1)
+// 	}
+// 	if entry.Caller != nil {
+// 		if f.hasFunc {
+// 			if f.FormatFuncName == nil {
+// 				f.FormatFuncName = defaultFormatFunc
+// 			}
+// 			output = strings.Replace(output, "%"+FieldKeyFunc+"%", (f.FormatFuncName(entry.Caller.Function)), 1)
+
+// 		}
+// 		if f.hasFile {
+// 			if f.FormatFileName == nil {
+// 				f.FormatFileName = defaultFormatFile
+// 			}
+// 			output = strings.Replace(output, "%"+FieldKeyFile+"%", (f.FormatFileName(entry.Caller.File)), 1)
+// 		}
+// 		if f.hasLine {
+// 			line := fmt.Sprintf("%-4v", strconv.FormatInt(int64(entry.Caller.Line), 10))
+// 			output = strings.Replace(output, "%"+FieldKeyLine+"%", (line), 1)
+// 		}
+// 	}
+// 	for k, v := range entry.Data {
+// 		if s, ok := v.(string); ok {
+// 			output += fmt.Sprintf(" %v:%q", k, s)
+// 		}
+// 	}
+// 	output += "\n"
+// 	return []byte(output), nil
+// }
 
 func (f *TextFormatter) needsQuoting(text string) bool {
 	if f.QuoteEmptyFields && len(text) == 0 {
