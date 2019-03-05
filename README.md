@@ -103,7 +103,7 @@ SetFormat(FieldKeyTime, FieldKeyLevel, FieldKeyFile, FieldKeyFunc, FieldKeyLine,
 2019-03-05 11:49:47 INFO .ter/example/main.go:48    main.main "format test"
 SetFormat(FieldKeyTime, FieldKeyLevel, FieldKeyFile, TaGColon, FieldKeyLine, FieldKeyFunc, FieldKeyMsg)
 
-It's not necessary to call log.Logger.SetReportCaller(true) if you use:
+It's necessary to call log.Logger.SetReportCaller(true) if you use:
 * FieldKeyFunc
 * FieldKeyFile
 * FieldKeyLine
