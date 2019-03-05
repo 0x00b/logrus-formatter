@@ -81,17 +81,27 @@ func main() {
 #### `SetFormat(args ...string) (format string)`
 
 Sets an alternative formatting string for output. use the following definition:
-* FieldKeyMsg            = logrus.FieldKeyMsg
-* FieldKeyLevel          = logrus.FieldKeyLevel
-* FieldKeyTime           = logrus.FieldKeyTime
-* FieldKeyLogrusError    = logrus.FieldKeyLogrusError
-* FieldKeyFunc           = logrus.FieldKeyFunc
-* FieldKeyFile           = logrus.FieldKeyFile
-* FieldKeyLine           = "line"
-* TagBL                  = "["
-* TagBR                  = "]"
-* TaGColon               = ":"
+```go
+FieldKeyMsg            = logrus.FieldKeyMsg		//"msg"
+FieldKeyLevel          = logrus.FieldKeyLevel		//"level"
+FieldKeyTime           = logrus.FieldKeyTime		//"time"
+FieldKeyFunc           = logrus.FieldKeyFunc		//"func"
+FieldKeyFile           = logrus.FieldKeyFile		//"file"
+FieldKeyLine           = "line"	
+TagBL                  = "["
+TagBR                  = "]"
+TaGColon               = ":"
+```
+You can use the above fields to combine the format you want.
+eg: 
+[2019-03-01 19:51:10] INFO "format test"
+SetFormat(TagBL, FieldKeyTime, TagBR, FieldKeyLevel, FieldKeyMsg)
 
+2019-03-05 11:48:08 INFO .ter/example/main.go  main.main 48   "format test"
+SetFormat(FieldKeyTime, FieldKeyLevel, FieldKeyFile, FieldKeyFunc, FieldKeyLine, FieldKeyMsg)
+
+2019-03-05 11:49:47 INFO .ter/example/main.go:48    main.main "format test"
+SetFormat(FieldKeyTime, FieldKeyLevel, FieldKeyFile, TaGColon, FieldKeyLine, FieldKeyFunc, FieldKeyMsg)
 
 It's not necessary to call log.Logger.SetReportCaller(true) if you use:
 * FieldKeyFunc
