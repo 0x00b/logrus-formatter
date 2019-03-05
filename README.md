@@ -91,7 +91,7 @@ FieldKeyLine           = "line"
 TagBL                  = "["
 TagBR                  = "]"
 TaGColon               = ":"
-```
+
 You can use the above fields to combine the format you want.
 eg: 
 [2019-03-01 19:51:10] INFO "format test"
@@ -107,6 +107,6 @@ It's not necessary to call log.Logger.SetReportCaller(true) if you use:
 * FieldKeyFunc
 * FieldKeyFile
 * FieldKeyLine
-
+```
 # License
 MIT
