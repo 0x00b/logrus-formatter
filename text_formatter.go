@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	//"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -69,6 +70,13 @@ func defaultFormatFunc(funcName string) string {
 		return "." + funcName[length-FunctionNameLength+1:length]
 	}
 	return strings.Repeat(" ", FunctionNameLength-length) + funcName
+}
+func defaultFormatFuncTag(funcName string) string {
+	idx := strings.LastIndex(funcName, "/")
+	if -1 == idx {
+		return funcName
+	}
+	return funcName[idx:]
 }
 func defaultFormatFile(fileName string) string {
 	r := []rune(fileName)
@@ -188,6 +196,8 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		function := entry.Caller.Function
 		if f.FormatFuncName != nil {
 			function = f.FormatFuncName(function)
+		} else {
+			function = defaultFormatFuncTag(function)
 		}
 		buf.WriteString(fmt.Sprintf(" (source=%v:%v:%v", fileName, function, entry.Caller.Line))
 	}
