@@ -32,13 +32,9 @@ func main() {
 	log.Printf("format test")    //[2019-03-01 19:40:48] INFO .ter/example/main.go:                main.main:37   "format test" (name:"ice" age:18)
 	TestFunctionNameLoooong(log) //[2019-03-01 19:40:48] INFO .ter/example/main.go:..TestFunctionNameLoooong:18   "just test long function name" (name:"ice" age:18)
 
-	logf.FileNameLength = 10     //
-	logf.FunctionNameLength = 10 //
-	log.Printf("format test")    //[2019-03-01 19:51:10] INFO .e/main.go: main.main:37   "format test" (name:"ice" age:18)
-
 	//自定义函数名的格式。也可以自定义文件名
 	formatter.FormatFuncName = func(name string) string {
-		funcLen := 5
+		funcLen := 10
 		l := len(name)
 		if l > funcLen {
 			return name[l-funcLen : l]
@@ -46,5 +42,12 @@ func main() {
 		return strings.Repeat(" ", funcLen-l) + name
 	}
 
-	log.Printf("format test") //[2019-03-01 19:51:10] INFO .e/main.go:.main:49   "format test" (name:"ice" age:18)
+	log.Printf("format test") //[2019-03-01 19:43:11] INFO .ter/example/main.go: main.main:41   "format test" (name:"ice" age:18)
+
+	formatter.SetFormat(logf.FieldKeyTime, logf.FieldKeyLevel, logf.FieldKeyFile, logf.TaGColon, logf.FieldKeyLine, logf.FieldKeyFunc, logf.FieldKeyMsg)
+	log.Printf("format test") //2019-03-18 12:02:38 INFO .ter/example/main.go:48    main.main "format test" (name="ice" age=18)
+
+	formatter.SetFormatAndTagSource(logf.TagBL, logf.FieldKeyTime, logf.TagBR, logf.FieldKeyLevel, logf.FieldKeyMsg)
+	log.Printf("format test") //[2019-03-18 12:02:38] INFO "format test" (source=/logrus-formatter/example/main.go:main.main:51 name="ice" age=18)
+
 }

@@ -45,6 +45,8 @@ type TextFormatter struct {
 	FormatFuncName HandlerFormatFile
 	FormatFileName HandlerFormatFunc
 
+	TagSource bool
+
 	hasTime  bool
 	hasLevel bool
 	hasMsg   bool
@@ -111,6 +113,10 @@ func (f *TextFormatter) setHasKey(k string) {
 func (f *TextFormatter) SetFormat(args ...string) {
 	f.keyArray = args
 }
+func (f *TextFormatter) SetFormatAndTagSource(args ...string) {
+	f.keyArray = args
+	f.TagSource = true
+}
 
 func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	var buf bytes.Buffer
@@ -146,14 +152,14 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 					buf.WriteString(f.FormatFuncName(entry.Caller.Function))
 				}
 			case FieldKeyFile:
-				if entry.Caller != nil {
+				if entry.HasCaller() && entry.Caller != nil {
 					if f.FormatFileName == nil {
 						f.FormatFileName = defaultFormatFile
 					}
 					buf.WriteString(f.FormatFileName(entry.Caller.File))
 				}
 			case FieldKeyLine:
-				if entry.Caller != nil {
+				if entry.HasCaller() && entry.Caller != nil {
 					line := fmt.Sprintf("%-4v", strconv.FormatInt(int64(entry.Caller.Line), 10))
 					buf.WriteString(line)
 				}
@@ -167,11 +173,17 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if length > 0 {
 		var idx int
 		buf.WriteString(" (")
+		if f.TagSource && entry.HasCaller() && entry.Caller != nil {
+			buf.WriteString(fmt.Sprintf("source=%v:%v:%v", entry.Caller.File, entry.Caller.Function, entry.Caller.Line))
+			if len(entry.Data) > 0 {
+				buf.WriteByte(' ')
+			}
+		}
 		for k, v := range entry.Data {
 			if s, ok := v.(string); ok {
-				buf.WriteString(fmt.Sprintf("%v:%q", k, s))
+				buf.WriteString(fmt.Sprintf("%v=%q", k, s))
 			} else {
-				buf.WriteString(fmt.Sprintf("%v:%v", k, v))
+				buf.WriteString(fmt.Sprintf("%v=%v", k, v))
 			}
 			if idx < length-1 {
 				buf.WriteByte(' ')

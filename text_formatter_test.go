@@ -50,7 +50,7 @@ var _ = Describe("Formatter", func() {
 		It("should output message with additional field", func() {
 			formatter.SetFormat(FieldKeyLevel, FieldKeyMsg)
 			log.WithFields(logrus.Fields{"animal": "walrus"}).Debug("test")
-			Ω(output.GetValue()).Should(Equal("DEBG test (animal:\"walrus\")\n"))
+			Ω(output.GetValue()).Should(Equal("DEBG test (animal=\"walrus\")\n"))
 		})
 	})
 
