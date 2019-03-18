@@ -169,15 +169,18 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 			}
 		}
 	}
+
+	tagSource := (f.TagSource && entry.HasCaller() && entry.Caller != nil)
 	length := len(entry.Data)
+	if tagSource {
+		buf.WriteString(fmt.Sprintf(" (source=%v:%v:%v", entry.Caller.File, entry.Caller.Function, entry.Caller.Line))
+	}
 	if length > 0 {
 		var idx int
-		buf.WriteString(" (")
-		if f.TagSource && entry.HasCaller() && entry.Caller != nil {
-			buf.WriteString(fmt.Sprintf("source=%v:%v:%v", entry.Caller.File, entry.Caller.Function, entry.Caller.Line))
-			if len(entry.Data) > 0 {
-				buf.WriteByte(' ')
-			}
+		if !tagSource {
+			buf.WriteString(" (")
+		} else {
+			buf.WriteByte(' ')
 		}
 		for k, v := range entry.Data {
 			if s, ok := v.(string); ok {
@@ -190,6 +193,8 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 			}
 			idx++
 		}
+		buf.WriteByte(')')
+	} else if tagSource {
 		buf.WriteByte(')')
 	}
 
