@@ -145,18 +145,24 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 				}
 				buf.WriteString(entry.Time.Format(timestampFormat))
 			case FieldKeyFunc:
-				if entry.Caller != nil {
-					if f.FormatFuncName == nil {
-						f.FormatFuncName = defaultFormatFunc
+				if entry.HasCaller() && entry.Caller != nil {
+					function := entry.Caller.File
+					if f.FormatFuncName != nil {
+						function = f.FormatFuncName(function)
+					} else {
+						function = defaultFormatFunc(function)
 					}
-					buf.WriteString(f.FormatFuncName(entry.Caller.Function))
+					buf.WriteString(function)
 				}
 			case FieldKeyFile:
 				if entry.HasCaller() && entry.Caller != nil {
-					if f.FormatFileName == nil {
-						f.FormatFileName = defaultFormatFile
+					fileName := entry.Caller.File
+					if f.FormatFileName != nil {
+						fileName = f.FormatFileName(fileName)
+					} else {
+						fileName = defaultFormatFile(fileName)
 					}
-					buf.WriteString(f.FormatFileName(entry.Caller.File))
+					buf.WriteString(fileName)
 				}
 			case FieldKeyLine:
 				if entry.HasCaller() && entry.Caller != nil {
@@ -173,7 +179,17 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	tagSource := (f.TagSource && entry.HasCaller() && entry.Caller != nil)
 	length := len(entry.Data)
 	if tagSource {
-		buf.WriteString(fmt.Sprintf(" (source=%v:%v:%v", entry.Caller.File, entry.Caller.Function, entry.Caller.Line))
+		fileName := entry.Caller.File
+		if f.FormatFileName != nil {
+			fileName = f.FormatFileName(fileName)
+		} else {
+			fileName = defaultFormatFile(fileName)
+		}
+		function := entry.Caller.Function
+		if f.FormatFuncName != nil {
+			function = f.FormatFuncName(function)
+		}
+		buf.WriteString(fmt.Sprintf(" (source=%v:%v:%v", fileName, function, entry.Caller.Line))
 	}
 	if length > 0 {
 		var idx int

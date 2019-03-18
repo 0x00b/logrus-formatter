@@ -64,7 +64,7 @@ func main() {
 	log.Printf("format test") //2019-03-18 12:02:38 INFO .ter/example/main.go:48    main.main "format test" (name="ice" age=18)
 
 	formatter.SetFormatAndTagSource(logf.TagBL, logf.FieldKeyTime, logf.TagBR, logf.FieldKeyLevel, logf.FieldKeyMsg)
-	log.Printf("format test") //[2019-03-18 12:02:38] INFO "format test" (source=/logrus-formatter/example/main.go:main.main:51 name="ice" age=18)
+	log.Printf("format test") //[2019-03-18 15:57:40] INFO "format test" (source=.ter/example/main.go: main.main:51 name="ice" age=18)
 
 }
 
