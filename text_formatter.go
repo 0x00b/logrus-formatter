@@ -20,7 +20,8 @@ const (
 	FieldKeyLine           = "line"
 	TagBL                  = "["
 	TagBR                  = "]"
-	TaGColon               = ":"
+	TagColon               = ":"
+	TagVBar                = "|"
 	defaultTimestampFormat = time.RFC3339
 )
 
@@ -39,6 +40,7 @@ type TextFormatter struct {
 
 	// QuoteEmptyFields will wrap empty fields in quotes if true
 	QuoteEmptyFields bool
+	NoQuoteFields    bool
 
 	//LogFormat
 	//LogFormat string
@@ -48,14 +50,15 @@ type TextFormatter struct {
 
 	TagSource bool
 
-	hasTime  bool
-	hasLevel bool
-	hasMsg   bool
-	hasFunc  bool
-	hasFile  bool
-	hasLine  bool
+	//hasTime  bool
+	//hasLevel bool
+	//hasMsg   bool
+	//hasFunc  bool
+	//hasFile  bool
+	//hasLine  bool
 
-	keyArray []string
+	keyArray  []string
+	FieldKeys []string
 }
 
 //HandlerFormatFunc format function name
@@ -88,7 +91,11 @@ func defaultFormatFile(fileName string) string {
 }
 
 func isTag(s string) bool {
-	if s == TagBR || s == TagBL || s == TaGColon {
+	switch s {
+	case TagBR:
+	case TagBL:
+	case TagColon:
+	case TagVBar:
 		return true
 	}
 	return false
@@ -100,26 +107,38 @@ func isBR(s string) bool {
 	}
 	return false
 }
-
-func (f *TextFormatter) setHasKey(k string) {
-	switch true {
-	case k == FieldKeyTime:
-		f.hasTime = true
-	case k == FieldKeyLevel:
-		f.hasLevel = true
-	case k == FieldKeyMsg:
-		f.hasMsg = true
-	case k == FieldKeyFunc:
-		f.hasFunc = true
-	case k == FieldKeyFile:
-		f.hasFile = true
-	case k == FieldKeyLine:
-		f.hasLine = true
+func needBlank(s string) bool {
+	switch s {
+	case TagBR:
+	case TagColon:
+	case TagVBar:
+		return false
 	}
+	return true
 }
+
+//func (f *TextFormatter) setHasKey(k string) {
+//	switch true {
+//	case k == FieldKeyTime:
+//		f.hasTime = true
+//	case k == FieldKeyLevel:
+//		f.hasLevel = true
+//	case k == FieldKeyMsg:
+//		f.hasMsg = true
+//	case k == FieldKeyFunc:
+//		f.hasFunc = true
+//	case k == FieldKeyFile:
+//		f.hasFile = true
+//	case k == FieldKeyLine:
+//		f.hasLine = true
+//	}
+//}
 
 func (f *TextFormatter) SetFormat(args ...string) {
 	f.keyArray = args
+}
+func (f *TextFormatter) RegisterFields(args ...string) {
+	f.FieldKeys = args
 }
 func (f *TextFormatter) SetFormatAndTagSource(args ...string) {
 	f.keyArray = args
@@ -177,14 +196,20 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 					line := fmt.Sprintf("%-4v", strconv.FormatInt(int64(entry.Caller.Line), 10))
 					buf.WriteString(line)
 				}
+			default:
+				if contains(f.FieldKeys, k) {
+					if entry.Data[k] != nil {
+						buf.WriteString(f.quoteValue(fmt.Sprintf("%v", entry.Data[k])))
+					}
+				}
 			}
-			if idx < len(f.keyArray)-1 && f.keyArray[idx+1] != TagBR && f.keyArray[idx+1] != TaGColon {
+			if idx < len(f.keyArray)-1 && needBlank(f.keyArray[idx+1]) {
 				buf.WriteByte(' ')
 			}
 		}
 	}
 
-	tagSource := (f.TagSource && entry.HasCaller() && entry.Caller != nil)
+	tagSource := f.TagSource && entry.HasCaller() && entry.Caller != nil
 	length := len(entry.Data)
 	if tagSource {
 		fileName := entry.Caller.File
@@ -209,6 +234,9 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 			buf.WriteByte(' ')
 		}
 		for k, v := range entry.Data {
+			if contains(f.FieldKeys, k) {
+				continue
+			}
 			if s, ok := v.(string); ok {
 				buf.WriteString(fmt.Sprintf("%v=%q", k, s))
 			} else {
@@ -227,6 +255,15 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	buf.WriteByte('\n')
 
 	return buf.Bytes(), nil
+}
+
+func contains(a []string, s string) bool {
+	for _, value := range a {
+		if value == s {
+			return true
+		}
+	}
+	return false
 }
 
 type Level logrus.Level
@@ -333,12 +370,14 @@ func (f *TextFormatter) needsQuoting(text string) bool {
 	if f.QuoteEmptyFields && len(text) == 0 {
 		return true
 	}
-	for _, ch := range text {
-		if !((ch >= 'a' && ch <= 'z') ||
-			(ch >= 'A' && ch <= 'Z') ||
-			(ch >= '0' && ch <= '9') ||
-			ch == '-' || ch == '.' || ch == '_' || ch == '/' || ch == '@' || ch == '^' || ch == '+') {
-			return true
+	if !f.NoQuoteFields {
+		for _, ch := range text {
+			if !((ch >= 'a' && ch <= 'z') ||
+				(ch >= 'A' && ch <= 'Z') ||
+				(ch >= '0' && ch <= '9') ||
+				ch == '-' || ch == '.' || ch == '_' || ch == '/' || ch == '@' || ch == '^' || ch == '+') {
+				return true
+			}
 		}
 	}
 	return false
@@ -351,8 +390,8 @@ func (f *TextFormatter) quoteValue(value interface{}) string {
 	}
 
 	if !f.needsQuoting(stringVal) {
-		return (stringVal)
+		return stringVal
 	} else {
-		return (fmt.Sprintf("%q", stringVal))
+		return fmt.Sprintf("%q", stringVal)
 	}
 }

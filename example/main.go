@@ -23,7 +23,7 @@ func main() {
 	log.Data["age"] = 18
 
 	//set format as : [time] level file:func:line msg
-	formatter.SetFormat(logf.TagBL, logf.FieldKeyTime, logf.TagBR, logf.FieldKeyLevel, logf.FieldKeyFile, logf.TaGColon, logf.FieldKeyFunc, logf.TaGColon, logf.FieldKeyLine, logf.FieldKeyMsg)
+	formatter.SetFormat(logf.TagBL, logf.FieldKeyTime, logf.TagBR, logf.FieldKeyLevel, logf.FieldKeyFile, logf.TagColon, logf.FieldKeyFunc, logf.TagColon, logf.FieldKeyLine, logf.FieldKeyMsg)
 	// logf.FieldKeyFile/logf.FieldKeyFunc/logf.FieldKeyLine , must call log.Logger.SetReportCaller(true)
 	log.Logger.SetReportCaller(true)
 	//set timestamp format
@@ -44,10 +44,17 @@ func main() {
 
 	log.Printf("format test") //[2019-03-01 19:43:11] INFO .ter/example/main.go: main.main:41   "format test" (name:"ice" age:18)
 
-	formatter.SetFormat(logf.FieldKeyTime, logf.FieldKeyLevel, logf.FieldKeyFile, logf.TaGColon, logf.FieldKeyLine, logf.FieldKeyFunc, logf.FieldKeyMsg)
+	formatter.SetFormat(logf.FieldKeyTime, logf.FieldKeyLevel, logf.FieldKeyFile, logf.TagColon, logf.FieldKeyLine, logf.FieldKeyFunc, logf.FieldKeyMsg)
 	log.Printf("format test") //2019-03-18 12:02:38 INFO .ter/example/main.go:48    main.main "format test" (name="ice" age=18)
 
 	formatter.SetFormatAndTagSource(logf.TagBL, logf.FieldKeyTime, logf.TagBR, logf.FieldKeyLevel, logf.FieldKeyMsg)
 	log.Printf("format test") //[2019-03-18 15:57:40] INFO "format test" (source=.ter/example/main.go: main.main:51 name="ice" age=18)
+
+	formatter.TagSource = false
+	formatter.NoQuoteFields = true
+	formatter.RegisterFields("RequestID")
+	formatter.SetFormat(logf.FieldKeyTime, logf.TagVBar, logf.FieldKeyLevel, logf.TagVBar, logf.FieldKeyMsg, logf.TagVBar, "RequestID")
+	log.Data["RequestID"] = "requestID1234"
+	log.Printf("format test") //2019-04-28 20:13:09|INFO|format test|requestID1234 (name="ice" age=18 )
 
 }
