@@ -93,8 +93,11 @@ func defaultFormatFile(fileName string) string {
 func isTag(s string) bool {
 	switch s {
 	case TagBR:
+		return true
 	case TagBL:
+		return true
 	case TagColon:
+		return true
 	case TagVBar:
 		return true
 	}
@@ -110,7 +113,9 @@ func isBR(s string) bool {
 func needBlank(s string) bool {
 	switch s {
 	case TagBR:
+		return false
 	case TagColon:
+		return false
 	case TagVBar:
 		return false
 	}
@@ -227,27 +232,43 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		buf.WriteString(fmt.Sprintf(" (source=%v:%v:%v", fileName, function, entry.Caller.Line))
 	}
 	if length > 0 {
-		var idx int
-		if !tagSource {
-			buf.WriteString(" (")
-		} else {
-			buf.WriteByte(' ')
+		bMoreField := false
+		moreCnt := 0
+		for k := range entry.Data {
+			if !contains(f.FieldKeys, k) {
+				bMoreField = true
+				moreCnt++
+			}
 		}
-		for k, v := range entry.Data {
-			if contains(f.FieldKeys, k) {
-				continue
-			}
-			if s, ok := v.(string); ok {
-				buf.WriteString(fmt.Sprintf("%v=%q", k, s))
+		if bMoreField {
+			var idx int
+			if !tagSource {
+				buf.WriteString(" (")
 			} else {
-				buf.WriteString(fmt.Sprintf("%v=%v", k, v))
-			}
-			if idx < length-1 {
 				buf.WriteByte(' ')
 			}
-			idx++
+			printCnt := 0
+			for k, v := range entry.Data {
+				if contains(f.FieldKeys, k) {
+					continue
+				}
+				printCnt++
+				if s, ok := v.(string); ok {
+					buf.WriteString(fmt.Sprintf("%v=%q", k, s))
+				} else {
+					buf.WriteString(fmt.Sprintf("%v=%v", k, v))
+				}
+				//if idx < length-1 {
+				if printCnt < moreCnt {
+					buf.WriteByte(' ')
+				}
+				idx++
+			}
+			buf.WriteByte(')')
+		} else if tagSource {
+			buf.WriteByte(')')
 		}
-		buf.WriteByte(')')
+
 	} else if tagSource {
 		buf.WriteByte(')')
 	}
