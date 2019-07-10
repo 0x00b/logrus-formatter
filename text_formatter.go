@@ -45,8 +45,8 @@ type TextFormatter struct {
 	//LogFormat
 	//LogFormat string
 
-	FormatFuncName HandlerFormatFile
-	FormatFileName HandlerFormatFunc
+	FormatFuncName HandlerFormatFunc
+	FormatFileName HandlerFormatFile
 
 	TagSource bool
 
@@ -156,7 +156,7 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	if len(f.keyArray) == 0 {
 		f.keyArray = defaultFormatArray
 	}
-
+	endWithLn := false
 	for idx, k := range f.keyArray {
 		if isTag(k) {
 			buf.WriteString(k)
@@ -205,6 +205,13 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 				if contains(f.FieldKeys, k) {
 					if entry.Data[k] != nil {
 						buf.WriteString(f.quoteValue(fmt.Sprintf("%v", entry.Data[k])))
+					}
+				} else {
+					if idx < len(f.keyArray)-1 || k != "\n" {
+						buf.WriteString(k)
+						continue
+					} else {
+						endWithLn = true
 					}
 				}
 			}
@@ -272,8 +279,10 @@ func (f *TextFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	} else if tagSource {
 		buf.WriteByte(')')
 	}
-
 	buf.WriteByte('\n')
+	if endWithLn {
+		buf.WriteByte('\n')
+	}
 
 	return buf.Bytes(), nil
 }
